@@ -245,9 +245,14 @@ class calculatecoverage(QtCore.QThread):
 		self.indir=indir
 	def run(self):
 		dirlist=os.listdir(self.indir)
+		self.dirdict={}
 		self.counter={}
 		for i,fname in enumerate(dirlist):
 			with open(os.path.join(self.indir,fname)) as infile:
+				if fname.endswith("_all.fa")==True:
+					self.dirdict[fname]=fname
+				else:
+					self.dirdict[fname.split(".")[0]+"_all.fa"]=fname
 				l=infile.readlines()
 				for i,j in enumerate(l):
 					if ">" in j:
@@ -962,7 +967,6 @@ class runmulticomparisons(QtCore.QThread):
 				c+=1
 			r+=1
 		wb.close()
-		wb.close()
 		self.taskFinished.emit([multisamplegood,multisamplebad,uniqlist])
 	def fusesets(self,inlist):
 		flag=0
@@ -985,18 +989,23 @@ class runmulticomparisons(QtCore.QThread):
 		
 class copyfiles(QtCore.QThread):
 	taskFinished=QtCore.pyqtSignal(int)
-	def __init__(self,indir,outdir,inlist,indir2,parent=None):
+	def __init__(self,indir,outdir,inlist,indir2,dirdict,inputmode,parent=None):
 		super(copyfiles, self).__init__(parent)
 		self.indir=indir
 		self.outdir=outdir
 		self.inlists=inlist
+		self.dirdict=dirdict
 		self.indir2=indir2
+		self.inputmode=inputmode
 	def run(self):
 		indir2=self.indir2
 		for i,inlist in enumerate(self.inlists):
 			if len(inlist)>0:
 				for fname in inlist:
-					shutil.copyfile(os.path.join(self.indir,fname), os.path.join(self.outdir[i],fname))
+					if self.inputmode==1:
+						shutil.copyfile(os.path.join(self.indir,fname), os.path.join(self.outdir[i],fname))
+					else:
+						shutil.copyfile(os.path.join(self.indir,self.dirdict[fname]), os.path.join(self.outdir[i],self.dirdict[fname]))
 			shutil.make_archive(self.outdir[i], 'zip', self.outdir[i])
 			shutil.rmtree(self.outdir[i])
 		shutil.make_archive(os.path.join(indir2,"2a_ConsensusByLength"), 'zip', os.path.join(indir2,"2a_ConsensusByLength"))
@@ -1035,7 +1044,7 @@ class SelectionTable(QtWidgets.QTableWidget):
 		super(SelectionTable, self).__init__(parent)
 		self.setColumnCount(1)
 		self.setRowCount(3)
-		self.setShowGrid(True)				
+		self.setShowGrid(True)
 		
 		self.setSizePolicy(QtWidgets.QSizePolicy.Minimum,QtWidgets.QSizePolicy.Minimum)
 		self.setMaximumWidth(self.size().width())
@@ -1128,6 +1137,7 @@ class runconsensusparts(QtCore.QThread):
 		fixthresh=float(inlist[11])
 		rangefreq=inlist[12]
 		stepsize=float(inlist[13])
+		ingencode=int(inlist[14])
 		def consensus(indict,perc_thresh,abs_thresh):
 			if len(indict.keys())>=abs_thresh:
 				poslist=[]
@@ -1175,20 +1185,26 @@ class runconsensusparts(QtCore.QThread):
 			corframe=get_cor_frame(each.replace("-",""),gencode)
 			if corframe==1:
 				translation=Seq(each.replace('-',''),generic_dna).translate(table=gencode,to_stop=True).__str__()
+				explen=len(each.replace('-',''))
 			if corframe==2:
 				translation=Seq(each[1:].replace('-',''),generic_dna).translate(table=gencode,to_stop=True).__str__()
+				explen=len(each[1:].replace('-',''))
 			if corframe==3:
 				translation=Seq(each[2:].replace('-',''),generic_dna).translate(table=gencode,to_stop=True).__str__()
+				explen=len(each[2:].replace('-',''))
 			if corframe==4:
 				translation=Seq(each.replace('-',''),generic_dna).reverse_complement().translate(table=gencode,to_stop=True).__str__()
+				explen=len(Seq(each.replace('-',''),generic_dna).__str__())
 			if corframe==5:
 				translation=Seq(each[:-1].replace('-',''),generic_dna).reverse_complement().translate(table=gencode,to_stop=True).__str__()
+				explen=len(Seq(each[-1].replace('-',''),generic_dna).__str__())
 			if corframe==6:
 				translation=Seq(each[:-2].replace('-',''),generic_dna).reverse_complement().translate(table=gencode,to_stop=True).__str__()
+				explen=len(Seq(each[:-2].replace('-',''),generic_dna).__str__())
 
-			if len(translation)<len(each)/3:
+			if len(translation)<explen/3:
 				return "0"
-			elif len(translation)==len(each)/3:
+			elif len(translation)==explen/3:
 				return "1"
 
 		def get_cor_frame(seq,gencode):
@@ -1225,11 +1241,11 @@ class runconsensusparts(QtCore.QThread):
 		#		print name,conseq
 				flag=False
 				if len(conseq)!=0:
-					transcheck=translate_corframe(conseq,5)
+					transcheck=translate_corframe(conseq,ingencode)
 					coverage=len(seqdict.keys())
 					if len(conseq)==plen:
 						if conseq.count("N")==0:
-							if translate_corframe(conseq,5)=="1":
+							if translate_corframe(conseq,ingencode)=="1":
 								flag=True
 								
 				else:
@@ -1283,10 +1299,10 @@ class runconsensusparts(QtCore.QThread):
 			try:
 				if subsetval!=0:
 					if v==0:
-						self.sampleids[name.split("_all.fa")[0]]=subset_bylength(os.path.join(outpath,indir,name),os.path.join(outpath,indir2,name),subsetval,plen,postdemlen)
+						self.sampleids[name.split("_all.fa")[0].split(".")[0]]=subset_bylength(os.path.join(outpath,indir,name),os.path.join(outpath,indir2,name),subsetval,plen,postdemlen)
 						cmd='disttbfast.exe '+parstring+' -i '+os.path.join(outpath,indir2,name) 
 					if v==1:
-						self.sampleids[name.split("_all.fa")[0]]=subset_bylength(os.path.join(indir,name),os.path.join(outpath,indir2,name),subsetval,plen,postdemlen)
+						self.sampleids[name.split("_all.fa")[0].split(".")[0]]=subset_bylength(os.path.join(indir,name),os.path.join(outpath,indir2,name),subsetval,plen,postdemlen)
 						cmd='disttbfast.exe '+parstring+' -i '+os.path.join(outpath,indir2,name) 
 				else:
 					cmd='disttbfast.exe '+parstring+' -i '+os.path.join(outpath,indir2,name)  
@@ -1298,11 +1314,11 @@ class runconsensusparts(QtCore.QThread):
 				transcheckeach,conseq,flag,cov=callconsensus(os.path.join(outpath,indir2+"_mafft",name+"_aln.fasta"),fixthresh,5,name)
 				otherconseqs=[]
 				if flag==True:
-					self.transcheck[name.split("_all.fa")[0]]=transcheckeach
-					self.conseqs[name.split("_all.fa")[0]]=conseq
-					self.flags[name.split("_all.fa")[0]]=flag
+					self.transcheck[name.split("_all.fa")[0].split(".")[0]]=transcheckeach
+					self.conseqs[name.split("_all.fa")[0].split(".")[0]]=conseq
+					self.flags[name.split("_all.fa")[0].split(".")[0]]=flag
 					if cov!="NA":
-						self.coverages[name.split("_all.fa")[0]]=cov
+						self.coverages[name.split("_all.fa")[0].split(".")[0]]=cov
 				else:
 					n=rangefreq[1]
 					while n>=rangefreq[0]:
@@ -1313,23 +1329,23 @@ class runconsensusparts(QtCore.QThread):
 									otherconseqs.append(conseq2)
 						n-=stepsize
 				if len(otherconseqs)==1:
-					self.transcheck[name.split("_all.fa")[0]]="1"
-					self.conseqs[name.split("_all.fa")[0]]=otherconseqs[0]
-					self.flags[name.split("_all.fa")[0]]=True
+					self.transcheck[name.split("_all.fa")[0].split(".")[0]]="1"
+					self.conseqs[name.split("_all.fa")[0].split(".")[0]]=otherconseqs[0]
+					self.flags[name.split("_all.fa")[0].split(".")[0]]=True
 					if cov!="NA":
-						self.coverages[name.split("_all.fa")[0]]=cov
+						self.coverages[name.split("_all.fa")[0].split(".")[0]]=cov
 				else:
-					self.transcheck[name.split("_all.fa")[0]]=transcheckeach
-					self.conseqs[name.split("_all.fa")[0]]=conseq
-					self.flags[name.split("_all.fa")[0]]=flag
+					self.transcheck[name.split("_all.fa")[0].split(".")[0]]=transcheckeach
+					self.conseqs[name.split("_all.fa")[0].split(".")[0]]=conseq
+					self.flags[name.split("_all.fa")[0].split(".")[0]]=flag
 					if cov!="NA":
-						self.coverages[name.split("_all.fa")[0]]=cov
+						self.coverages[name.split("_all.fa")[0].split(".")[0]]=cov
 			except Application.ApplicationError:
-				self.transcheck[name.split("_all.fa")[0]]="NA"
-				self.conseqs[name.split("_all.fa")[0]]=""
-				self.flags[name.split("_all.fa")[0]]=False
+				self.transcheck[name.split("_all.fa")[0].split(".")[0]]="NA"
+				self.conseqs[name.split("_all.fa")[0].split(".")[0]]=""
+				self.flags[name.split("_all.fa")[0].split(".")[0]]=False
 				if cov!='NA':
-					self.coverages[name.split("_all.fa")[0]]="NA"
+					self.coverages[name.split("_all.fa")[0].split(".")[0]]="NA"
 			self.notifyProgress.emit(c+1)
 		self.taskFinished.emit(0)#	return 0
 def pool_init(queue):
@@ -1346,7 +1362,7 @@ class MSAcheck(QtCore.QThread):
 	notifyProgress2 = QtCore.pyqtSignal(list)
 	notifyProgress3 = QtCore.pyqtSignal(str)
 	notifyProgress4 = QtCore.pyqtSignal(str)
-	def __init__(self, outpath, plen,filename,task,dirname, mode,indir,goodfile,errfile,n90subset,outdir,ngood,corlist,prefix,parent=None):
+	def __init__(self, outpath, plen,filename,task,dirname, mode,indir,goodfile,errfile,n90subset,outdir,ngood,corlist,prefix,dirdict,parent=None):
 		super(MSAcheck, self).__init__(parent)
 		self.outpath=outpath
 		self.plen=plen
@@ -1363,6 +1379,7 @@ class MSAcheck(QtCore.QThread):
 		self.tocorlist=corlist
 	#	print "corlist",corlist,ngood
 		self.prefix=prefix
+		self.dirdict=dirdict
 	def run(self):
 		filename=self.filename
 		ambiguity_codes=[("R", "A"), ("R", "G"),("M", "A"), ("M", "C"),("S", "C"), ("S", "G"),("Y", "C"), ("Y", "T"),("K", "G"), ("K", "T"),("W", "A"), ("W", "T"),("V", "A"), ("V", "C"),("V", "G"),("H", "A"),("H", "C"),("H", "T"),("D", "A"), ("D", "G"),("D", "T"), ("B", "C"),("B", "G"), ("B", "T"),("N", "A"), ("N", "G"), ("N", "C"), ("N", "T")]
@@ -1384,7 +1401,7 @@ class MSAcheck(QtCore.QThread):
 				if ">" in j:
 					badbarcodes[j[1:].split(";")[0]]=l[i+1].strip()
 		ngoodbarcodes=0
-		print "good corlist",len(self.tocorlist)
+	#	print "good corlist",len(self.tocorlist)
 		with open(os.path.join(self.outpath,"barcodesets",self.outdir,self.prefix+"_predgood_barcodes.fa"),'w') as gfile:
 			with open(os.path.join(self.outpath,"barcodesets",self.outdir,self.errfile),'a') as bfile:
 				if self.ngood>=3:
@@ -1407,11 +1424,9 @@ class MSAcheck(QtCore.QThread):
 								gfile.write(">"+each+";estgaps="+str(errcount)+'\n'+seqdict[each].replace("-","").upper()+'\n')
 								seqdictgood[each]=seqdict[each]
 								ngoodbarcodes+=1
-							#	self.transcheck[each.split("_all.fa")[0]]="1"
 							else:
 								bfile.write(">"+each+";estgaps="+str(errcount)+'\n'+seqdict[each].replace("-","").upper()+'\n')
 								badbarcodes[each+";estgaps="+str(errcount)]=seqdict[each]
-							#	self.transcheck[each.split("_all.fa")[0]]="0"
 						self.notifyProgress2.emit([n+1,len(self.tocorlist)])
 				else:
 					seqdict=self.builddict_sequences(os.path.join(self.outpath,"barcodesets","temps",self.goodfile))
@@ -1431,6 +1446,7 @@ class MSAcheck(QtCore.QThread):
 				dirlist=os.listdir(os.path.join(self.outpath,"demultiplexed"))
 			else:
 				dirlist=os.listdir(os.path.join(self.indir))
+			print self.dirdict
 			refdict={}
 			for each in badbarcodes.keys():
 				refdict[each.split(';')[0]]=badbarcodes[each].upper().replace("-","")
@@ -1441,7 +1457,8 @@ class MSAcheck(QtCore.QThread):
 						if self.mode==0:
 							seqdict=self.builddict_sequences(os.path.join(self.outpath,"demultiplexed",f))
 						else:
-							seqdict=self.builddict_sequences(os.path.join(self.indir,f))
+							print f
+							seqdict=self.builddict_sequences(os.path.join(self.indir,self.dirdict[f]))
 						for seqid in seqdict.keys():
 							try:
 								k = edlib.align(seqdict[seqid].replace("P","T").replace("E","A").replace("F","G").replace("Q","C"), refdict[f], mode='NW',task='path',additionalEqualities=ambiguity_codes)
@@ -1838,7 +1855,7 @@ class OptWindow(QtWidgets.QWidget):
 		self.con200flags={}
 		self.n90goodn=0
 	#	self.n90errn=0
-		self.Tab.addTab(scrollarea,"Demultiplexing & Consensus calling")
+		self.Tab.addTab(scrollarea,"Demultiplexing - Consensus calling")
 		self.Tab.addTab(self.compstack,"Compare barcode sets")
 
 		self.rightframe.setLayout(self.grid_right)
@@ -1987,8 +2004,8 @@ class OptWindow(QtWidgets.QWidget):
 
 	def setcompoutpath3(self):
 		ts = int(time.time())
-		os.mkdir("ComparisonOut"+str(ts))
-		self.compoutpath=os.path.join(os.getcwd(),"ComparisonOut"+str(ts))
+		os.mkdir("ONTBarcoderComparisonOut"+str(ts))
+		self.compoutpath=os.path.join(os.getcwd(),"ONTBarcoderComparisonOut"+str(ts))
 		self.showrefdalog()
 	
 	def setdemoutpath(self):
@@ -2276,7 +2293,7 @@ class OptWindow(QtWidgets.QWidget):
 		dirlist=os.listdir(self.indir)
 		for fname in dirlist:
 			self.sampleids[fname.split("_all.fa")[0]]=""
-		self.statuswidget.logstatus.textCursor().insertHtml("You have "+str(len(dirlist))+' input files.<br><b><p style="color:blue;">Phase 2a: Consensus by Length</b></p>Reads are sorted by deviation from the length of the amplicon. The reads with the best length match are selected for alignment whereby the maximum number of reads to consider was specified by the user during setup. The reads are aligned and a consensus barcode is called. It is only accepted as a candidate barcode if it has the correct length, is translatable, and free of ambiguous bases. If the iterative mode was chosen during setup, this process is repeated at increasingly higher coverage for those bins that fail to yield a barcode at lower coverages.')
+		self.statuswidget.logstatus.textCursor().insertHtml("You have "+str(len(dirlist))+' input files.')
 		self.minlen=int(self.MinLengthTextBox.text())
 		self.explen=int(self.ExpLengthTextBox.text())
 		self.inlistforconsensus=fnmatch.filter(os.listdir(self.indir),"*")
@@ -2287,7 +2304,11 @@ class OptWindow(QtWidgets.QWidget):
 	def startcalcdemreads(self):
 	#	print "startcalc"
 		self.mycounterdemreads.start()
+ 
 	def setprintreadfasta(self):
+		self.statuswidget.logstatus.textCursor().insertHtml("<br>These contain "+str(sum(self.mycounterdemreads.counter.values()))+' reads. <br><b><p style="color:blue;">Phase 2a: Consensus by Length</b></p>Reads are sorted by deviation from the length of the amplicon. The reads with the best length match are selected for alignment whereby the maximum number of reads to consider was specified by the user during setup. The reads are aligned and a consensus barcode is called. It is only accepted as a candidate barcode if it has the correct length, is translatable, and free of ambiguous bases. If the iterative mode was chosen during setup, this process is repeated at increasingly higher coverage for those bins that fail to yield a barcode at lower coverages.')
+		self.dirdict=self.mycounterdemreads.dirdict
+	#	print self.dirdict
 		self.printreadfasta(1)
 
 		
@@ -2345,7 +2366,7 @@ class OptWindow(QtWidgets.QWidget):
 			self.gencodebox.addItem("31. Blastocrithidia Nuclear Code")
 			self.gencodebox.addItem("33. Cephalodiscidae Mitochondrial UAA-Tyr Code")
 			self.gencodebox.activated[str].connect(self.gencodechoice)
-			self.gencode="5"
+			self.gencode=5
 			self.gencodebox.setCurrentIndex(4)
 			MinLengthLabel = QtWidgets.QLabel('Minimum Length: ',self.d)
 			ExpLengthLabel = QtWidgets.QLabel('Length of barcode: ',self.d)
@@ -2501,7 +2522,7 @@ class OptWindow(QtWidgets.QWidget):
 	def getreffasta(self):
 		self.remreferencefasta = QtWidgets.QFileDialog.getOpenFileName(self, "Select your reference fasta")
 	def gencodechoice(self,text):
-		self.gencode=text.split(".")[0]
+		self.gencode=int(text.split(".")[0])
 	def settrans1(self):
 		self.transstat="Yes"
 	def settrans2(self):
@@ -2652,9 +2673,9 @@ class OptWindow(QtWidgets.QWidget):
 			nparts=chunker_list(self.inlistforconsensus,1)
 			self.counter=len(self.inlistforconsensus)
 			if v==0:
-				nparts=[[x,self.demoutpath,"demultiplexed",os.path.join("2a_ConsensusByLength","demultiplexed_"+str(self.selectlens[self.selectlenscounter])),self.selectlens[self.selectlenscounter],"consensus_"+str(self.selectlens[self.selectlenscounter])+"_barcodes.fa",i,self.explen,v,self.postdemlen,"consensus_by_length",self.consensesfreqfixed,self.consensesfreqrange,self.consensesfreqstep] for i,x in enumerate(nparts)]
+				nparts=[[x,self.demoutpath,"demultiplexed",os.path.join("2a_ConsensusByLength","demultiplexed_"+str(self.selectlens[self.selectlenscounter])),self.selectlens[self.selectlenscounter],"consensus_"+str(self.selectlens[self.selectlenscounter])+"_barcodes.fa",i,self.explen,v,self.postdemlen,"consensus_by_length",self.consensesfreqfixed,self.consensesfreqrange,self.consensesfreqstep,self.gencode] for i,x in enumerate(nparts)]
 			elif v==1:
-				nparts=[[x,self.demoutpath,self.indir,os.path.join("2a_ConsensusByLength","demultiplexed_"+str(self.selectlens[self.selectlenscounter])),self.selectlens[self.selectlenscounter],"consensus_"+str(self.selectlens[self.selectlenscounter])+"_barcodes.fa",i,self.explen,v,self.postdemlen,"consensus_by_length",self.consensesfreqfixed,self.consensesfreqrange,self.consensesfreqstep] for i,x in enumerate(nparts)]
+				nparts=[[x,self.demoutpath,self.indir,os.path.join("2a_ConsensusByLength","demultiplexed_"+str(self.selectlens[self.selectlenscounter])),self.selectlens[self.selectlenscounter],"consensus_"+str(self.selectlens[self.selectlenscounter])+"_barcodes.fa",i,self.explen,v,self.postdemlen,"consensus_by_length",self.consensesfreqfixed,self.consensesfreqrange,self.consensesfreqstep,self.gencode] for i,x in enumerate(nparts)]
 			self.myconsensus1=runconsensusparts(nparts[0])
 			self.myconsensus1.notifyProgress.connect(self.updatecon1)
 			self.myconsensus1.taskFinished.connect(self.updateconsensus)
@@ -2751,7 +2772,7 @@ class OptWindow(QtWidgets.QWidget):
 							coverages[j.split(";")[0].split("_all.fa")[0][1:]]=int(j.split(";")[2])
 							if len(l[i+1].strip().upper())==self.explen:
 								if l[i+1].strip().upper().count("N")==0:
-									if self.translate_corframe(l[i+1].strip().upper(),5)=="1":
+									if self.translate_corframe(l[i+1].strip().upper(),self.gencode)=="1":
 										flags[j.split(";")[0].split("_all.fa")[0][1:]]=True
 									else:
 										flags[j.split(";")[0].split("_all.fa")[0][1:]]=False
@@ -2759,7 +2780,7 @@ class OptWindow(QtWidgets.QWidget):
 									flags[j.split(";")[0].split("_all.fa")[0][1:]]=False
 							else:
 								flags[j.split(";")[0].split("_all.fa")[0][1:]]=False
-							transdict[j.split(";")[0].split("_all.fa")[0][1:]]=self.translate_corframe(l[i+1].strip().upper(),5)
+							transdict[j.split(";")[0].split("_all.fa")[0][1:]]=self.translate_corframe(l[i+1].strip().upper(),self.gencode)
 						except IndexError:
 							self.showwarningdialog("Your FASTA file looks wrong. It must be generated by the ONTbarcoder pipeline")
 							self.sumstack.setCurrentIndex(0)
@@ -2771,6 +2792,7 @@ class OptWindow(QtWidgets.QWidget):
 				self.resultlist=[[transdict,conseqs,flags,coverages]]
 				if self.flag!=3:
 					self.sampleids=self.mycounterdemreads.counter
+					self.dirdict=self.mycounterdemreads.dirdict
 				for each in self.resultlist:
 					for k in each[0].keys():
 						self.con200trans[k]=each[0][k]
@@ -2811,14 +2833,14 @@ class OptWindow(QtWidgets.QWidget):
 		try:
 			self.indir
 			if self.consensus90stat==True:
-				self.mycheckmsa=MSAcheck(self.demoutpath,self.explen,fname,1,"90perc",1,self.indir,"consensusgood_temp.fa","consensus_all_prederr_barcodes.fa",n90percsubsetn,"consensus_by_length",self.ngoodbarcodescounter,self.corlist,"consensusgood")
+				self.mycheckmsa=MSAcheck(self.demoutpath,self.explen,fname,1,"90perc",1,self.indir,"consensusgood_temp.fa","consensus_all_prederr_barcodes.fa",n90percsubsetn,"consensus_by_length",self.ngoodbarcodescounter,self.corlist,"consensusgood",self.dirdict)
 			else:
-				self.mycheckmsa=MSAcheck(self.demoutpath,self.explen,fname,0,"90perc",1,self.indir,"consensusgood_temp.fa","consensus_all_prederr_barcodes.fa",n90percsubsetn,"consensus_by_length",self.ngoodbarcodescounter,self.corlist,"consensusgood")
+				self.mycheckmsa=MSAcheck(self.demoutpath,self.explen,fname,0,"90perc",1,self.indir,"consensusgood_temp.fa","consensus_all_prederr_barcodes.fa",n90percsubsetn,"consensus_by_length",self.ngoodbarcodescounter,self.corlist,"consensusgood",self.dirdict)
 		except AttributeError:
 			if self.consensus90stat==True:
-				self.mycheckmsa=MSAcheck(self.demoutpath,self.explen,fname,1,"90perc",0,"","consensusgood_temp.fa","consensus_all_prederr_barcodes.fa",n90percsubsetn,"consensus_by_length",self.ngoodbarcodescounter,self.corlist,"consensusgood")
+				self.mycheckmsa=MSAcheck(self.demoutpath,self.explen,fname,1,"90perc",0,"","consensusgood_temp.fa","consensus_all_prederr_barcodes.fa",n90percsubsetn,"consensus_by_length",self.ngoodbarcodescounter,self.corlist,"consensusgood",{})
 			else:
-				self.mycheckmsa=MSAcheck(self.demoutpath,self.explen,fname,0,"90perc",0,"","consensusgood_temp.fa","consensus_all_prederr_barcodes.fa",n90percsubsetn,"consensus_by_length",self.ngoodbarcodescounter,self.corlist,"consensusgood")
+				self.mycheckmsa=MSAcheck(self.demoutpath,self.explen,fname,0,"90perc",0,"","consensusgood_temp.fa","consensus_all_prederr_barcodes.fa",n90percsubsetn,"consensus_by_length",self.ngoodbarcodescounter,self.corlist,"consensusgood",{})
 		if self.consensus90stat==True:
 			self.mycheckmsa.taskFinished.connect(self.callsecondconsensus)
 		else:
@@ -2833,7 +2855,7 @@ class OptWindow(QtWidgets.QWidget):
 		self.statuswidget.pbar.setFormat("%v"+"/"+str(i[1]))
 		self.statuswidget.pbar.setValue(i[0])
 	def updatemsabar11(self,i):
-		print i
+	#	print i
 		self.statuswidget.pbar.setMaximum(i[1])
 		self.statuswidget.pbar.setFormat("%v"+"/"+str(i[1]))
 		self.statuswidget.pbar.setValue(i[0])
@@ -2843,7 +2865,7 @@ class OptWindow(QtWidgets.QWidget):
 		self.statuswidget.pbarTitle.setText("Identifying sequences similar to initial consensus (cutoff 90%)")
 	#	self.statuswidget.logstatus.textCursor().insertHtml("Here the reads are mapped to consensus in previous steps to identify \nbest quality reads which are based on those similar to first consensus.")
 	def updatemsa1label(self,i):
-		print "MSAdone"
+	#	print "MSAdone"
 	#	self.statuswidget.logstatus.textCursor().insertHtml("Done")
 		self.statuswidget.pbarTitle.setText("Parsing MSA")
 	#	self.statuswidget.logstatus.textCursor().insertHtml("<br>Reading the MSA to split the barcodes post length, translation and internal gap check<br>")
@@ -2857,7 +2879,7 @@ class OptWindow(QtWidgets.QWidget):
 			self.statuswidget.logstatus.textCursor().insertHtml("<br><br><b>Number of good barcodes identified in this step="+str(self.con200goodn)+"</b>")
 		else:
 			self.logfile.write(str(round(time.time())) + ": No good consensus barcode found in first round, trying now with reads closest to the first consensus\n")
-			self.statuswidget.logstatus.textCursor().insertHtml("<br>No good consensus barcode found in first round.")			
+			self.statuswidget.logstatus.textCursor().insertHtml("<br>No good consensus barcode found in first round.")
 		demsheet=self.wb.add_worksheet("2a Consensus by length")
 
 		headers=["SpecimenID","Number of sequences demultiplexed","stage","length","barcode","translation check"]
@@ -2889,7 +2911,7 @@ class OptWindow(QtWidgets.QWidget):
 
 			self.statuswidget.pbarTitle.setText("Consensus by Similarity, coverage: "+ str(self.n90percsubsetn))
 			self.statuswidget.logstatus.textCursor().insertHtml('<br><b><p style="color:blue;">Phase 2b: Consensus by Similarity</p></b>Those read bins that failed to yield a QC-compliant barcode in Phase 2a are subjected to further analysis. Each bin has a preliminary barcode that is assumed to summarize the main signal in the bin. The preliminary barcode is used to identify and eliminate aberrant reads from the bin that have a similarity of less than 90% to the preliminary barcode. Based on the remaining reads, ONTbarcoder then builds a new alignment using the maximum number of reads specified by the user with the highest similarity scores. Consensus calling and quality control follows the same procedures as under Phase 2a.')
-			print "sec cons"
+	#		print "sec cons"
 			partlist=fnmatch.filter(os.listdir(os.path.join(self.demoutpath,"2b_ConsensusBySimilarity","90perc")),"*")
 			self.nsampledem=len(partlist)
 		#	os.mkdir(os.path.join(self.demoutpath,"2b_ConsensusBySimilarity","90perc_200"))
@@ -2901,7 +2923,7 @@ class OptWindow(QtWidgets.QWidget):
 		#	self.nsampledem=len(partlist)
 			nparts=chunker_list(partlist,1)
 			self.counter=len(partlist)
-			nparts=[[x,os.path.join(self.demoutpath),os.path.join("2b_ConsensusBySimilarity","90perc"),os.path.join("2b_ConsensusBySimilarity","90perc"),0,"90perc_barcodes.fa",i,self.explen,0,self.postdemlen,"consensus_by_similarity",self.consensesfreqfixed,self.consensesfreqrange,self.consensesfreqstep] for i,x in enumerate(nparts)]
+			nparts=[[x,os.path.join(self.demoutpath),os.path.join("2b_ConsensusBySimilarity","90perc"),os.path.join("2b_ConsensusBySimilarity","90perc"),0,"90perc_barcodes.fa",i,self.explen,0,self.postdemlen,"consensus_by_similarity",self.consensesfreqfixed,self.consensesfreqrange,self.consensesfreqstep,self.gencode] for i,x in enumerate(nparts)]
 			self.myconsensus2=runconsensusparts(nparts[0])
 			self.myconsensus2.notifyProgress.connect(self.updatecon2)
 			self.myconsensus2.taskFinished.connect(self.updateconsensus2)
@@ -2955,8 +2977,8 @@ class OptWindow(QtWidgets.QWidget):
 		self.logfile.write(str(round(time.time())) +": Second consensus calling completed\n")
 		self.statuswidget.pbarTitle.setText("Identifying correct and incorrect barcodes based on MSA")
 		self.statuswidget.logstatus.textCursor().insertHtml("<br><br>Consensus sequences are stored in "+ str(os.path.join(self.demoutpath,"barcodesets","consensus_by_similarity","90perc_barcodes.fa"))+".")
-		self.statuswidget.logstatus.textCursor().insertHtml("<br><br>Application of the 4th barcode quality criterion to the candidate barcodes. They are aligned, but only those are accepted as barcodes that do not cause indels in the MSA. All bins that did not yield an accepted barcode are passed to Phase 3: Barcoding fixing through Consensus by Barcode Comparisons, if enabled")
-		self.mycheckmsa2=MSAcheck(self.demoutpath,self.explen,"90perc_barcodes.fa",2,"90perc",0,"","consensusgood_temp.fa","90perc_prederr_barcodes.fa",0,"consensus_by_similarity",self.ngoodbarcodescounter,self.corlist,"90perc")
+		self.statuswidget.logstatus.textCursor().insertHtml("<br><br>Application of the 4th barcode quality criterion to the candidate barcodes. They are aligned, but only those are accepted as barcodes that do not cause indels in the MSA. All bins that did not yield an accepted barcode are passed to Phase 3: Barcode fixing through Consensus by Barcode Comparisons, if enabled")
+		self.mycheckmsa2=MSAcheck(self.demoutpath,self.explen,"90perc_barcodes.fa",2,"90perc",0,"","consensusgood_temp.fa","90perc_prederr_barcodes.fa",0,"consensus_by_similarity",self.ngoodbarcodescounter,self.corlist,"90perc",{})
 		self.mycheckmsa2.taskFinished.connect(self.mafft200setup)
 		self.mycheckmsa2.notifyProgress2.connect(self.updatemsabar21)
 		self.mycheckmsa2.notifyProgress3.connect(self.updatemsa2label)
@@ -3081,20 +3103,26 @@ class OptWindow(QtWidgets.QWidget):
 			corframe=get_cor_frame(each.replace("-",""),gencode)
 			if corframe==1:
 				translation=Seq(each.replace('-',''),generic_dna).translate(table=gencode,to_stop=True).__str__()
+				explen=len(each.replace('-',''))
 			if corframe==2:
 				translation=Seq(each[1:].replace('-',''),generic_dna).translate(table=gencode,to_stop=True).__str__()
+				explen=len(each[1:].replace('-',''))
 			if corframe==3:
 				translation=Seq(each[2:].replace('-',''),generic_dna).translate(table=gencode,to_stop=True).__str__()
+				explen=len(each[2:].replace('-',''))
 			if corframe==4:
 				translation=Seq(each.replace('-',''),generic_dna).reverse_complement().translate(table=gencode,to_stop=True).__str__()
+				explen=len(Seq(each.replace('-',''),generic_dna).__str__())
 			if corframe==5:
 				translation=Seq(each[:-1].replace('-',''),generic_dna).reverse_complement().translate(table=gencode,to_stop=True).__str__()
+				explen=len(Seq(each[-1].replace('-',''),generic_dna).__str__())
 			if corframe==6:
 				translation=Seq(each[:-2].replace('-',''),generic_dna).reverse_complement().translate(table=gencode,to_stop=True).__str__()
+				explen=len(Seq(each[:-2].replace('-',''),generic_dna).__str__())
 
-			if len(translation)<len(each)/3:
+			if len(translation)<explen/3:
 				return "0"
-			elif len(translation)==len(each)/3:
+			elif len(translation)==explen/3:
 				return "1"
 
 		def get_cor_frame(seq,gencode):
@@ -3111,7 +3139,7 @@ class OptWindow(QtWidgets.QWidget):
 			return corframe
 						
 		self.statuswidget.pbarTitle.setText("Consensus by barcode comparisons")
-		self.statuswidget.logstatus.textCursor().insertHtml('<br><b><p style="color:blue;">Phase 3: Barcoding fixing through Consensus by Barcode Comparisons</p></b><br>Preliminary barcodes that failed the QC criteria applied during Phase 2a and 2b are fixed.  20 QC-compliant barcodes are found that have the highest similarity to each of the preliminary barcodes that failed QC. Each preliminary barcode is aligned to its 20 best-matching QC-compliant barcodes and indels in the preliminary barcode are identified and fixed according to the criteria described in the manuscript.')
+		self.statuswidget.logstatus.textCursor().insertHtml('<br><b><p style="color:blue;">Phase 3: Barcode fixing through Consensus by Barcode Comparisons</p></b><br>Preliminary barcodes that failed the QC criteria applied during Phase 2a and 2b are fixed.  20 QC-compliant barcodes are found that have the highest similarity to each of the preliminary barcodes that failed QC. Each preliminary barcode is aligned to its 20 best-matching QC-compliant barcodes and indels in the preliminary barcode are identified and fixed according to the criteria described in the manuscript.')
 		self.demsheet=self.wb.add_worksheet("3.Final barcodes")
 
 		headers=["SpecimenID","Number of sequences demultiplexed","Number used for generating barcodes","stage","type","length","barcode","translation check","#ambiguities"]
@@ -3312,19 +3340,25 @@ class OptWindow(QtWidgets.QWidget):
 			corframe=get_cor_frame(each.replace("-",""),gencode)
 			if corframe==1:
 				translation=Seq(each.replace('-',''),generic_dna).translate(table=gencode,to_stop=True).__str__()
+				explen=len(each.replace('-',''))
 			if corframe==2:
 				translation=Seq(each[1:].replace('-',''),generic_dna).translate(table=gencode,to_stop=True).__str__()
+				explen=len(each[1:].replace('-',''))
 			if corframe==3:
 				translation=Seq(each[2:].replace('-',''),generic_dna).translate(table=gencode,to_stop=True).__str__()
+				explen=len(each[2:].replace('-',''))
 			if corframe==4:
 				translation=Seq(each.replace('-',''),generic_dna).reverse_complement().translate(table=gencode,to_stop=True).__str__()
+				explen=len(Seq(each.replace('-',''),generic_dna).__str__())
 			if corframe==5:
 				translation=Seq(each[:-1].replace('-',''),generic_dna).reverse_complement().translate(table=gencode,to_stop=True).__str__()
+				explen=len(Seq(each[-1].replace('-',''),generic_dna).__str__())
 			if corframe==6:
 				translation=Seq(each[:-2].replace('-',''),generic_dna).reverse_complement().translate(table=gencode,to_stop=True).__str__()
-			if len(translation)<len(each)/3:
+				explen=len(Seq(each[:-2].replace('-',''),generic_dna).__str__())
+			if len(translation)<explen/3:
 				return "0"
-			elif len(translation)==len(each)/3:
+			elif len(translation)==explen/3:
 				return "1"
 
 		def get_cor_frame(seq,gencode):
@@ -3366,7 +3400,7 @@ class OptWindow(QtWidgets.QWidget):
 								newseq+=j
 				#	print newseq
 					newseq=newseq.upper()
-					if translate_corframe(newseq,5)=="1":
+					if translate_corframe(newseq,self.gencode)=="1":
 						for barcode in self.seqdict[refseq.replace("-","").replace("?","")][1:]:
 							self.demsheet.write(self.i+1,0,barcode.split("_all.fa")[0])
 							try:
@@ -3562,11 +3596,11 @@ class OptWindow(QtWidgets.QWidget):
 		os.mkdir(os.path.join(self.demoutpath,"Main_barcode_results","Remaining"))
 		outdirlist=[os.path.join(self.demoutpath,"Main_barcode_results","QC_Compliant"),os.path.join(self.demoutpath,"Main_barcode_results","Filtered"),os.path.join(self.demoutpath,"Main_barcode_results","1to5errors"),os.path.join(self.demoutpath,"Main_barcode_results","6to10errors"),os.path.join(self.demoutpath,"Main_barcode_results","11to15errors"),os.path.join(self.demoutpath,"Main_barcode_results","Over16errors"),os.path.join(self.demoutpath,"Main_barcode_results","Remaining")]
 		if self.inputmode==1:
-			self.mycopyfiles=copyfiles(os.path.join(self.demoutpath,"demultiplexed"),outdirlist,[perfectlist,filteredlist,n1to5errlist,n6to10errlist,n11to15errlist,nover16list,errlist],os.path.join(self.demoutpath))
+			self.mycopyfiles=copyfiles(os.path.join(self.demoutpath,"demultiplexed"),outdirlist,[perfectlist,filteredlist,n1to5errlist,n6to10errlist,n11to15errlist,nover16list,errlist],os.path.join(self.demoutpath),{},1)
 			self.mycopyfiles.taskFinished.connect(self.printfinalout)
 			self.runcopy()
 		elif self.inputmode==2:
-			self.mycopyfiles=copyfiles(os.path.join(self.indir),outdirlist,[perfectlist,filteredlist,n1to5errlist,n6to10errlist,n11to15errlist,nover16list,errlist],os.path.join(self.demoutpath))
+			self.mycopyfiles=copyfiles(os.path.join(self.indir),outdirlist,[perfectlist,filteredlist,n1to5errlist,n6to10errlist,n11to15errlist,nover16list,errlist],os.path.join(self.demoutpath),self.dirdict,2)
 			self.mycopyfiles.taskFinished.connect(self.printfinalout)
 			self.runcopy()
 		else:
@@ -3954,19 +3988,25 @@ class OptWindow(QtWidgets.QWidget):
 		corframe=self.get_cor_frame(each.replace("-",""),gencode)
 		if corframe==1:
 			translation=Seq(each.replace('-',''),generic_dna).translate(table=gencode,to_stop=True).__str__()
+			explen=len(each.replace('-',''))
 		if corframe==2:
 			translation=Seq(each[1:].replace('-',''),generic_dna).translate(table=gencode,to_stop=True).__str__()
+			explen=len(each[1:].replace('-',''))
 		if corframe==3:
 			translation=Seq(each[2:].replace('-',''),generic_dna).translate(table=gencode,to_stop=True).__str__()
+			explen=len(each[2:].replace('-',''))
 		if corframe==4:
 			translation=Seq(each.replace('-',''),generic_dna).reverse_complement().translate(table=gencode,to_stop=True).__str__()
+			explen=len(Seq(each.replace('-',''),generic_dna).__str__())
 		if corframe==5:
 			translation=Seq(each[:-1].replace('-',''),generic_dna).reverse_complement().translate(table=gencode,to_stop=True).__str__()
+			explen=len(Seq(each[-1].replace('-',''),generic_dna).__str__())
 		if corframe==6:
 			translation=Seq(each[:-2].replace('-',''),generic_dna).reverse_complement().translate(table=gencode,to_stop=True).__str__()
-		if len(translation)<len(each)/3:
+			explen=len(Seq(each[:-2].replace('-',''),generic_dna).__str__())
+		if len(translation)<explen/3:
 			return "0"
-		elif len(translation)==len(each)/3:
+		elif len(translation)==explen/3:
 			return "1"
 
 	def get_cor_frame(self,seq,gencode):
