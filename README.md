@@ -1,4 +1,6 @@
 # ONTbarcoder
+### Accessibility to Software
+Please check the releases in this repository
 
 ### Accessibility to data
 
