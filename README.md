@@ -1,6 +1,21 @@
 # ONTbarcoder
 ### Accessibility to Software
 Please check the releases in this repository: https://github.com/asrivathsan/ONTbarcoder/releases. The latest version of the software 0.1.9 has information on the files to use for MacOS in the release page, please choose the relavent one. The ONTBarcoder_manual.pdf details more detailed guidelines for troubleshooting in case of issues.
+####Windows
+Unzip [ONTBarcoder_0.1.9_exe.win-amd64-2.7.zip](https://github.com/asrivathsan/ONTbarcoder/releases/tag/0.1.9#:~:text=ONTBarcoder_0.1.9_exe.win-amd64-2.7.zip) and double click on the executable. In default mode the output files are stored in the same directory as the executable
+
+Windows has a character limit of path length as 256 characters. Therefore, please avoid placing the software deep inside the directory structure. Avoid spaces in folder names
+
+####Macintosh
+Use the DMGs for the version corresponding to your Mac. We recommend using the upgraded Mac (OSX11) and corresponding dmg file ONTbarcoder_0.1.9_OS11.dmg
+. We have also compiled for older versions; ONTbarcoder_0.1.9_OSX10_13.dmg has been tested in OSX 10.13 and 10.12. We would suggesting using this in first pass for 10.14/15
+
+In case DMG files give problems due to permission, you may use the standalone.tgz files. THese will contain numerous executables and the software should be run using ONTbarcoder_multiprocessing.
+
+####Linux
+Uncompress the tgz archive ONTbarcoder_multiprocessing_0.1.9_linux.tgz.  start the software from the terminal as by 
+cd directory_containing_ONTbarcooderfiles
+./ONTbarcoder_multiprocessing
 
 ### Software manual
 The manual is available as ONTBarcoder_manual.pdf in this repository
