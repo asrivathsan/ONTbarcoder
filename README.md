@@ -1,6 +1,6 @@
 # ONTbarcoder
 ### Accessibility to Software
-Please check the releases in this repository: https://github.com/asrivathsan/ONTbarcoder/releases. The latest version of the software 0.1.9 has information on the files to use for MacOS in the release page, please choose the relavent one. The ONTBarcoder_manual.pdf details more detailed guidelines for troubleshooting in case of issues.
+Please check the releases in this repository: https://github.com/asrivathsan/ONTbarcoder/releases. TThe ONTBarcoder_manual.pdf details more detailed guidelines for troubleshooting in case of issues.
 #### Windows
 Unzip [ONTBarcoder_0.1.9_exe.win-amd64-2.7.zip](https://github.com/asrivathsan/ONTbarcoder/releases/download/0.1.9/ONTBarcoder_0.1.9_exe.win-amd64-2.7.zip) and double click on the executable. In default mode the output files are stored in the same directory as the executable
 
