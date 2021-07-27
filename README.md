@@ -9,7 +9,7 @@ Windows has a character limit of path length as 256 characters. Therefore, pleas
 #### Macintosh
 Use the DMGs for the version corresponding to your Mac. We recommend using the upgraded Mac (macOS 11) and corresponding dmg file [ONTbarcoder_0.1.9_OS11.dmg](https://github.com/asrivathsan/ONTbarcoder/releases/download/0.1.9/ONTbarcoder_0.1.9_OS11.dmg). We have also compiled for older versions; [ONTbarcoder_0.1.9_OSX10_13.dmg](https://github.com/asrivathsan/ONTbarcoder/releases/download/0.1.9/ONTbarcoder_0.1.9_OSX10_13.dmg) has been tested in macOS 10.13 and 10.12. We would suggesting using this in first pass for 10.14/15
 
-In case DMG files give problems due to permission, you may use the standalone.tgz: [macOS 11](https://github.com/asrivathsan/ONTbarcoder/releases/download/0.1.9/ONTbarcoder_0.9.1_OSX11_standalone.tgz), [macOS 10.13](https://github.com/asrivathsan/ONTbarcoder/releases/download/0.1.9/ONTbarcoder_0.1.9_OS10.13_standalone.tgz) files. THese will contain numerous executables and the software should be run using ONTbarcoder_multiprocessing.
+In case DMG files give problems due to permission, you may use the standalone.tgz: [macOS 11](https://github.com/asrivathsan/ONTbarcoder/releases/download/0.1.9/ONTbarcoder_0.9.1_OSX11_standalone.tgz), [macOS 10.13](https://github.com/asrivathsan/ONTbarcoder/releases/download/0.1.9/ONTbarcoder_0.1.9_OS10.13_standalone.tgz) files. These will contain numerous executables and the software should be run using ONTbarcoder_multiprocessing.
 
 #### Linux
 Uncompress the tgz archive [ONTbarcoder_multiprocessing_0.1.9_linux.tgz](https://github.com/asrivathsan/ONTbarcoder/releases/download/0.1.9/ONTbarcoder_multiprocessing_0.1.9_linux.tgz).  Start the software from the terminal as by 
