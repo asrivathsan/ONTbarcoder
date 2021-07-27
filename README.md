@@ -13,10 +13,10 @@ In case DMG files give problems due to permission, you may use the standalone.tg
 
 #### Linux
 Uncompress the tgz archive [ONTbarcoder_multiprocessing_0.1.9_linux.tgz](https://github.com/asrivathsan/ONTbarcoder/releases/download/0.1.9/ONTbarcoder_multiprocessing_0.1.9_linux.tgz).  Start the software from the terminal as by 
-
-cd directory_containing_ONTbarcooderfiles
+`
+cd directory_containing_ONTbarcoderfiles
 ./ONTbarcoder_multiprocessing
-
+`
 ### Software manual
 The manual is available as ONTBarcoder_manual.pdf in this repository
 
