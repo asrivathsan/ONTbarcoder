@@ -22,9 +22,13 @@ def resource_path(relative_path):
 		return os.path.join(sys._MEIPASS, relative_path)
 
 	return os.path.join(os.path.abspath("."), relative_path)
-parfilepath=os.path.join(os.path.dirname(sys.executable),"parfile")
-disttbpath=os.path.join(os.path.dirname(sys.executable),"./disttbfast")
 
+os.chdir(os.path.expanduser("~"))
+print os.path.join(os.path.dirname(sys.argv[0]),"mafftfiles","_aamtx")
+print os.getcwd()
+parfilepath=os.path.join(os.path.dirname(sys.argv[0]),"mafftfiles","parfile")
+disttbpath=os.path.join(os.path.dirname(sys.argv[0]),"mafftfiles","./disttbfast")
+#os.system("chmod +x "+os.path.join(os.path.dirname(sys.argv[0]),"mafftfiles","disttbfast"))
 class prepdemultiplex(QtCore.QThread):
 	taskFinished=QtCore.pyqtSignal(int)
 	notifyProgress=QtCore.pyqtSignal(int)
@@ -248,9 +252,6 @@ class mergedemfiles(QtCore.QThread):
 		self.taskFinished.emit(0)
 
 
-
-
-
 class calculatecoverage(QtCore.QThread):
 	taskFinished=QtCore.pyqtSignal(int)
 	notifyProgress=QtCore.pyqtSignal(int)
@@ -276,6 +277,7 @@ class calculatecoverage(QtCore.QThread):
 							self.counter[fname.split("_all.fa")[0].split(".")[0]]=1
 			self.notifyProgress.emit(c+1)
 		self.taskFinished.emit(0)
+
 class runpaircomparisons(QtCore.QThread):
 	taskFinished=QtCore.pyqtSignal(list)
 	notifyProgress=QtCore.pyqtSignal(int)
@@ -1007,6 +1009,35 @@ class runmulticomparisons(QtCore.QThread):
 			inlist=new
 		return new
 	
+
+class checkindir(QtCore.QThread):
+	taskFinished=QtCore.pyqtSignal(int)
+	def __init__(self,indir,parent=None):
+		super(checkindir, self).__init__(parent)
+		self.indir=indir			  
+	def run(self):
+		dirlist=os.listdir(self.indir)
+		if len(dirlist)>0:
+			for each in dirlist:
+				if each.endswith("_all.fa"):
+					with open(os.path.join(self.indir,each)) as infile:
+						line=infile.readline()
+						if len(line)>0:
+
+							if line[0]==">":
+								self.indirstatus=True
+							else:
+								self.indirstatus=False
+								break
+						else:
+							self.indirstatus=False
+							break
+				else:
+					self.indirstatus=False
+					break
+		else:
+			self.indirstatus=False
+		self.taskFinished.emit(1)
 		
 class copyfiles(QtCore.QThread):
 	taskFinished=QtCore.pyqtSignal(int)
@@ -1090,7 +1121,7 @@ class SelectionTable(QtWidgets.QTableWidget):
 		item=QtWidgets.QTableWidgetItem("   Demultiplexing and/or barcode calling : Please drag an input FASTQ file and demultiplexing file to enable this mode   ")
 		item.setTextAlignment(QtCore.Qt.AlignCenter)
 		self.setItem(0, 0, item)
-		item=QtWidgets.QTableWidgetItem("   Barcode calling only: Please drag a folder containing demultiplexed reads to enable this mode   ")
+		item=QtWidgets.QTableWidgetItem("   Barcode calling only: Please drag a folder containing demultiplexed fasta to enable this mode. Use naming conventions specified in readme if data was not demultiplexed by ONTbarcoder   ")
 		item.setTextAlignment(QtCore.Qt.AlignCenter)
 		self.setItem(1, 0, item)
 		item=QtWidgets.QTableWidgetItem("   Fix barcodes based on MSA: Please drag an input fasta of consensus previously called by this software   ")
@@ -1748,7 +1779,7 @@ class OptWindow(QtWidgets.QWidget):
 				return os.path.join(sys._MEIPASS, relative_path)
 
 			return os.path.join(os.path.abspath("."), relative_path)
-		shutil.copyfile(os.path.join(os.path.dirname(sys.executable),"_aamtx"),"_aamtx")
+		shutil.copyfile(os.path.join(os.path.dirname(sys.argv[0]),"mafftfiles","_aamtx"),"_aamtx")
 		self.processlabel=QtWidgets.QLabel()
 	#	QtWidgets.QToolTip.setFont(QtGui.QFont('SansSerif',10))
 		InputMessage=QtWidgets.QLabel('Following information is required:')
@@ -1803,7 +1834,7 @@ class OptWindow(QtWidgets.QWidget):
 		self.rtopframelayout=QtWidgets.QHBoxLayout()
 		self.rtopframe.setLayout(self.rtopframelayout)
 		# Set the root index of the view as the user's home directory.
-		ix=model.index(os.path.dirname(sys.executable))
+		ix=model.index(os.path.dirname(sys.argv[0]))
 		expandPath(ix,view)
 		view.hideColumn(1)
 		view.hideColumn(2)
@@ -1819,7 +1850,7 @@ class OptWindow(QtWidgets.QWidget):
 		self.quitbtn.clicked.connect(self.terminate)
 
 		self.sumtext='<center><b><u> ONTBarcoder </u></b> <br><br>Minion based DNA barcoding<br>'
-		self.sumdesc='<center><p>This pipeline aims to demultiplex and call consensus barcodes for specimen based DNA barcoding.<br><br> Please start by dragging files depending on which mode you want to run</center>'
+		self.sumdesc='<center><p>This pipeline aims to demultiplex and call consensus barcodes for specimen based DNA barcoding.<br><br> Please start by dragging files depending on which mode you want to run<br><br>For further instructions please see: <br><a href=https://github.com/asrivathsan/ONTbarcoder/blob/main/ONTBarcoder_manual.pdf>README</a></center>'
 		self.opttable=SelectionTable()
 		
 		self.dembtn=QtWidgets.QPushButton("Let's go")
@@ -1831,6 +1862,8 @@ class OptWindow(QtWidgets.QWidget):
 		self.sumtablabel.setFont(QtGui.QFont("SansSerif", 16, QtGui.QFont.Bold))
 		self.sumdescbel=QtWidgets.QLabel(self.sumdesc)
 		self.sumdescbel.setStyleSheet("margin-left:30;" "margin-right:30;")
+		self.sumdescbel.setOpenExternalLinks(True)
+		self.sumdescbel.setTextFormat(QtCore.Qt.RichText)
 		#self.sumdescbel.setFont(QtGui.QFont("Arial", 10))
 		self.sumstack=QtWidgets.QStackedWidget()
 		self.sumstack.setStyleSheet("background-color: white;")
@@ -1850,7 +1883,7 @@ class OptWindow(QtWidgets.QWidget):
 		self.compstack=QtWidgets.QStackedWidget()
 		self.compstack.setStyleSheet("background-color: white;")
 		self.compstacklayout=QtWidgets.QGridLayout()		
-		self.comptext='<center><b><u> Compare barcodes: </u></b> Please drag in 2 or more fasta files simultaneously. <br><br> This module helps compare the barcode sets, either to <br>(1) compare the barcodes obtained by the software against a reference set of barcodes or <br>(2) compare the different barcode sets obtained by this software. <br><br> Given that pairwise comparisons are done it is essential that the barcode names are identical before the delimiters "_/-/;" for this module</center><br><br>'
+		self.comptext='<center><b><u> Compare barcodes: </u></b> Please drag in 2 or more fasta files simultaneously. <br><br> This module helps compare the barcode sets, either to <br>(1) compare the barcodes obtained by the software against a reference set of barcodes or <br>(2) compare the different barcode sets obtained by this software. <br><br> Given that pairwise comparisons are done it is essential that <br>the barcode names are identical before the delimiters "_/-/;" for this module</center><br><br>'
 		self.comptablabel=QtWidgets.QLabel(self.comptext)
 		self.comptablabel.setStyleSheet("margin-left:30;" "margin-right:30;")	
 		self.compwidget=QtWidgets.QWidget()
@@ -1893,6 +1926,14 @@ class OptWindow(QtWidgets.QWidget):
 			e.accept()
 		else:
 			e.ignore()
+	def checkindirstart(self):
+		self.mycheckindir.start()
+	def indircheckcomplete(self):
+		print "checkdone",self.mycheckindir.indirstatus
+		if  self.mycheckindir.indirstatus==False:
+			self.opttable.item(1,0).setText("Your input directory seems to contain invalid files. Please reload correct files, else software will crash")
+			self.opttable.item(1,0).setBackground(QtGui.QColor(255,0,0))
+
 	def dropEvent(self, e):
 		urls = e.mimeData().urls()
 		if self.Tab.currentIndex()==0:
@@ -1912,6 +1953,9 @@ class OptWindow(QtWidgets.QWidget):
 					self.opttable.item(0,0).setBackground(QtGui.QColor(255,255,255))
 					self.opttable.item(2,0).setBackground(QtGui.QColor(255,255,255))
 					self.inputmode=2
+					self.mycheckindir=checkindir(self.indir)
+					self.mycheckindir.taskFinished.connect(self.indircheckcomplete)
+					self.checkindirstart()
 				else:
 					with open(fname) as infile:
 						line=infile.readline()
@@ -2020,8 +2064,8 @@ class OptWindow(QtWidgets.QWidget):
 			self.setcompoutpath2()
 	def setcompoutpath3(self):
 		ts = int(time.time())
-		os.mkdir(os.path.join(os.getcwd(),"ONTBarcoderComparisonOut"+str(ts)))
-		self.compoutpath=os.path.join(os.getcwd(),"ONTBarcoderComparisonOut"+str(ts))
+		os.mkdir(os.path.join(os.path.expanduser("~"),"ONTBarcoderComparisonOut"+str(ts)))
+		self.compoutpath=os.path.join(os.path.expanduser("~"),"ONTBarcoderComparisonOut"+str(ts))
 	#	os.mkdir("ComparisonOut"+str(ts))
 	#	self.compoutpath=os.path.join(os.getcwd(),"ComparisonOut"+str(ts))
 		self.showrefdalog()
@@ -2067,8 +2111,8 @@ class OptWindow(QtWidgets.QWidget):
 	def setdemoutpath3(self):
 		self.mb.close()
 		ts = int(time.time())
-		os.mkdir(os.path.join(os.getcwd(),"ONTBarcoderOutput"+str(ts)))
-		self.demoutpath=os.path.join(os.getcwd(),"ONTBarcoderOutput"+str(ts))
+		os.mkdir(os.path.join(os.path.expanduser("~"),"ONTBarcoderOutput"+str(ts)))
+		self.demoutpath=os.path.join(os.path.expanduser("~"),"ONTBarcoderOutput"+str(ts))
 #		self.logfile=open(os.path.join(self.demoutpath,"log.txt"),'w')
 		self.setuprun()
 
@@ -2114,6 +2158,7 @@ class OptWindow(QtWidgets.QWidget):
 		except ValueError:
 			self.showwarningdialog("The values of length cutoffs must be integers")
 			valuecheck.append(False)
+		try:
 			self.minlen=int(self.MinLengthTextBox.text())
 			valuecheck.append(True)
 		except ValueError:
