@@ -19,13 +19,13 @@ Please check the releases in this repository: https://github.com/asrivathsan/ONT
 ## Installation
 #### Windows
 
-Current version: Unzip [ONTbarcoder2.1.5_win.zip](https://github.com/asrivathsan/ONTbarcoder/releases/download/2.1.3/ONTbarcoder2.1.5_win.zip) and double click on the executable. In default mode the output files are stored in the same directory as the executable. Windows has a character limit of path length as 256 characters. Therefore, please avoid placing the software deep inside the directory structure. Avoid spaces in folder names
+Current version: Unzip [ONTbarcoder2.2_win.zip](https://github.com/asrivathsan/ONTbarcoder/releases/download/2.1.3/ONTbarcoder2.2_win.zip) and double click on the executable. In default mode the output files are stored in the same directory as the executable. Windows has a character limit of path length as 256 characters. Therefore, please avoid placing the software deep inside the directory structure. Avoid spaces in folder names
 
 Older version: Unzip [ONTBarcoder_0.1.9_exe.win-amd64-2.7.zip](https://github.com/asrivathsan/ONTbarcoder/releases/download/0.1.9/ONTBarcoder_0.1.9_exe.win-amd64-2.7.zip) and double click on the executable. In default mode the output files are stored in the same directory as the executable
 
 #### Macintosh
 
-Use the DMG version [ONTbarcoder2.1.3.dmg](https://github.com/asrivathsan/ONTbarcoder/releases/download/2.1.3/ONTbarcoder2.1.3.dmg). In some tests, it was noted that permissions can be an issue in Mac. Transferring the app to Applications folder and running worked smoothly. If however one faces permission issues please modify System Preferences > Security and Privacy > Full Disk Access.
+Use the DMG version [ONTbarcoder2.2.dmg](https://github.com/asrivathsan/ONTbarcoder/releases/download/2.1.3/ONTbarcoder2.2.dmg). In some tests, it was noted that permissions can be an issue in Mac. Transferring the app to Applications folder and running worked smoothly. But you may have to right click and select open
 
 For older version of ONTbarcoder: Use the DMGs for the version corresponding to your Mac. We recommend using the upgraded Mac (macOS 11) and corresponding dmg file [ONTbarcoder_0.1.9_OS11.dmg](https://github.com/asrivathsan/ONTbarcoder/releases/download/0.1.9/ONTbarcoder_0.1.9_OS11.dmg). We have also compiled for older versions; [ONTbarcoder_0.1.9_OSX10_13.dmg](https://github.com/asrivathsan/ONTbarcoder/releases/download/0.1.9/ONTbarcoder_0.1.9_OSX10_13.dmg) has been tested in macOS 10.13 and 10.12. We would suggesting using this in first pass for 10.14/15
 
@@ -36,7 +36,7 @@ Current version: Uncompress the tgz archive [ONTbarcoder_2.1.3_linux.tgz](https:
 Start the software from the terminal as by 
 ```
 cd directory_containing_ONTbarcoderfiles
-./ONTbarcoder_multiprocessing
+./ONTbarcoder
 ```
 
 Older version: Uncompress the tgz archive [ONTbarcoder_multiprocessing_0.1.9_linux.tgz](https://github.com/asrivathsan/ONTbarcoder/releases/download/0.1.9/ONTbarcoder_multiprocessing_0.1.9_linux.tgz).  
